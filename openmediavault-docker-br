@@ -11,13 +11,21 @@
 ### END INIT INFO
 
 SETTINGS="/etc/docker-bridge.xml"
-H_IF_NAME=`xmlstarlet sel -t -m '//iface' -v . $SETTINGS`
-H_BR_NAME=`xmlstarlet sel -t -m '//bridgename' -v . $SETTINGS`
-H_IP=`xmlstarlet sel -t -m '//hostip' -v . $SETTINGS`
-IP_ARY=`xmlstarlet sel -t -v '//ip' $SETTINGS | awk 'NF>0 {if (i++) printf " "; printf "%s", $0 } END { printf "\n" }'`
+OLDSETTINGS="/tmp/docker-bridge.xml"
+PIDFILE="/var/run/docker-bridge.pid"
 
 case "$1" in
     start|"")
+        #TODO Check pid-file if logparser is already runnning
+
+        #Copy settings file
+        cp $SETTINGS $OLDSETTINGS
+
+        #Configure macvlan bridge and routing on the host
+        H_IF_NAME=`xmlstarlet sel -t -m '//iface' -v . $SETTINGS`
+        H_BR_NAME=`xmlstarlet sel -t -m '//bridgename' -v . $SETTINGS`
+        H_IP=`xmlstarlet sel -t -m '//hostip' -v . $SETTINGS`
+        IP_ARY=`xmlstarlet sel -t -v '//ip' $SETTINGS | awk 'NF>0 {if (i++) printf " "; printf "%s", $0 } END { printf "\n" }'`
         ip link add $H_BR_NAME link $H_IF_NAME type macvlan mode bridge
         ip link set $H_BR_NAME up
         ip addr add $H_IP dev $H_BR_NAME
@@ -25,12 +33,18 @@ case "$1" in
             IP=`echo $i | cut -d '/' -f1`
             ip route add $IP dev $H_BR_NAME
         done
+
+        #Start the logparser which will assign IP's to the containers as they are started/restarted
         /usr/local/bin/docker-logparser.php &
         ;;
     stop)
+        #TODO Revert configuration done at start
+        ;;
+    restart)
+        #TODO stop->start the service
         ;;
     *)
-        echo "Usage: ${0:-} {start|stop}" >&2
+        echo "Usage: ${0:-} {start|stop|restart}" >&2
         exit 1
         ;;
 esac
