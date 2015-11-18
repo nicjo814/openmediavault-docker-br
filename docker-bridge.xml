@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings>
+<iface>eth0</iface>
+<gw>192.168.0.1</gw>
+<bridgename>mydocker-0</bridgename>
+<hostip>192.168.0.2</hostip>
+<containers>
+	<container>
+		<name>container1</name>
+		<ip>192.168.0.10/24</ip>
+	</container>
+	<container>
+		<name>container2</name>
+		<ip>192.168.0.11/24</ip>
+	</container>
+</containers>
+</settings>

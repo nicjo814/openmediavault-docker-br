@@ -1,0 +1,39 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:          openmediavault-docker-br
+# Required-Start:    
+# Required-Stop:
+# X-Required-Start:  docker
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Sets up macvlan bridges for Docker containers
+### END INIT INFO
+
+SETTINGS="/etc/docker-bridge.xml"
+H_IF_NAME=`xmlstarlet sel -t -m '//iface' -v . $SETTINGS`
+H_BR_NAME=`xmlstarlet sel -t -m '//bridgename' -v . $SETTINGS`
+H_IP=`xmlstarlet sel -t -m '//hostip' -v . $SETTINGS`
+IP_ARY=`xmlstarlet sel -t -v '//ip' $SETTINGS | awk 'NF>0 {if (i++) printf " "; printf "%s", $0 } END { printf "\n" }'`
+
+case "$1" in
+    start|"")
+        ip link add $H_BR_NAME link $H_IF_NAME type macvlan mode bridge
+        ip link set $H_BR_NAME up
+        ip addr add $H_IP dev $H_BR_NAME
+        for i in $IP_ARY ; do
+            IP=`echo $i | cut -d '/' -f1`
+            ip route add $IP dev $H_BR_NAME
+        done
+        /usr/local/bin/docker-logparser.php
+        ;;
+    stop)
+        ;;
+    *)
+        echo "Usage: ${0:-} {start|stop}" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
+
