@@ -25,7 +25,7 @@ case "$1" in
             IP=`echo $i | cut -d '/' -f1`
             ip route add $IP dev $H_BR_NAME
         done
-        /usr/local/bin/docker-logparser.php
+        /usr/local/bin/docker-logparser.php &
         ;;
     stop)
         ;;
