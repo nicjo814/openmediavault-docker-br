@@ -64,52 +64,26 @@ while (true) {
                 foreach ($c_ary as $key => $val) {
                     setip($key);
                 }
-                echo $line;
-            } //TODO Look at start/restart of containers
+            } elseif (preg_match('/^.*\/v[\d]{1}\.[\d]{2}\/containers\/(.*)\/start.*$/', $line, $matches)) {
+                foreach ($c_ary as $key => $val) {
+                    if (strcmp($key, $matches[1]) === 0) {
+                        setip($key);
+                        break;
+                    }
+                }
+            } elseif (preg_match('/^.*\/v[\d]{1}\.[\d]{2}\/containers\/(.*)\/restart.*$/', $line, $matches)) {
+                foreach ($c_ary as $key => $val) {
+                    if (strcmp($key, $matches[1]) === 0) {
+                        setip($key);
+                        break;
+                    }
+                }
+            }
             flush();
         }
         $lastpos = ftell($f);
         fclose($f);
     }
 }
-
-/*
-$file='/home/user/youfile.txt';
-$lastpos = 0;
-while (true) {
-    usleep(300000); //0.3 s
-    clearstatcache(false, $file);
-    $len = filesize($file);
-    if ($len < $lastpos) {
-        //file deleted or reset
-        $lastpos = $len;
-    }
-    elseif ($len > $lastpos) {
-        $f = fopen($file, "rb");
-        if ($f === false)
-            die();
-        fseek($f, $lastpos);
-        while (!feof($f)) {
-            $buffer = fread($f, 4096);
-            echo $buffer;
-            flush();
-        }
-        $lastpos = ftell($f);
-        fclose($f);
-    }
-}
- */
-
-/*
-$file = new SplFileObject("/var/log/docker.log");
-while (true) {
-    if (!$file->eof()) {
-        echo $file->fgets();
-    } else {
-        sleep(10);
-    }
-}
-$file = null;
- */
 
 ?>
