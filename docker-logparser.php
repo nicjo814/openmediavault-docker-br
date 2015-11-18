@@ -12,9 +12,29 @@ $c_ary = array();
 foreach ($xml->containers->container as $container) {
     $name = (string)$container->name;
     $ip = (string)$container->ip;
+    $startcmd = array();
+    $stopcmd = array();
+    if (count((array)$container->startcommands) > 0) {
+        foreach ($container->startcommands->command as $command) {
+            if (!(strcmp((string)$command, "") === 0)) {
+                array_push($startcmd, (string)$command);
+            }
+        }
+    }
+    if (count((array)$container->stopcommands) > 0) {
+        foreach ($container->stopcommands->command as $command) {
+            if (!(strcmp((string)$command, "") === 0)) {
+                array_push($stopcmd, (string)$command);
+            }
+        }
+    }
     $c_ary[$name] = array(
-        "ip" => $ip);
+        "ip" => $ip,
+        "startcmd" => $startcmd,
+        "stopcmd" => $stopcmd
+    );
 }
+var_dump($c_ary);
 
 function setip($name)
 {
@@ -34,8 +54,8 @@ function setip($name)
     exec("$nsenter -t " . $pid[0] . " -n ip route del default");
     exec("$nsenter -t " . $pid[0] . " -n ip addr add " . $ip . " dev " . $name . "-0");
     exec("$nsenter -t " . $pid[0] . " -n ip route add default via " . $gw . " dev " . $name . "-0");
-    if (strcmp($name, "freepbx") === 0) {
-        exec("$nsenter -t " . $pid[0] . " -n killall asterisk");
+    foreach ($c_ary[$name]["startcmd"] as $command) {
+        exec($command);
     }
     return 0;
 }
