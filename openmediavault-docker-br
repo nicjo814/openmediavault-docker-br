@@ -12,36 +12,94 @@
 
 SETTINGS="/etc/docker-bridge.xml"
 OLDSETTINGS="/tmp/docker-bridge.xml"
-PIDFILE="/var/run/docker-bridge.pid"
+
+add_br()
+{
+    H_IF_NAME=`xmlstarlet sel -t -m '//iface' -v . $SETTINGS`
+    H_BR_NAME=`xmlstarlet sel -t -m '//bridgename' -v . $SETTINGS`
+    H_IP=`xmlstarlet sel -t -m '//hostip' -v . $SETTINGS`
+    IP_ARY=`xmlstarlet sel -t -v '//ip' $SETTINGS | awk 'NF>0 {if (i++) printf " "; printf "%s", $0 } END { printf "\n" }'`
+    ip link add $H_BR_NAME link $H_IF_NAME type macvlan mode bridge
+    ip link set $H_BR_NAME up
+    ip addr add $H_IP dev $H_BR_NAME
+    for i in $IP_ARY ; do
+        IP=`echo $i | cut -d '/' -f1`
+        ip route add $IP dev $H_BR_NAME
+    done
+    return 0
+}
+
+del_br()
+{
+    H_IF_NAME=`xmlstarlet sel -t -m '//iface' -v . $OLDSETTINGS`
+    H_BR_NAME=`xmlstarlet sel -t -m '//bridgename' -v . $OLDSETTINGS`
+    H_IP=`xmlstarlet sel -t -m '//hostip' -v . $OLDSETTINGS`
+    IP_ARY=`xmlstarlet sel -t -v '//ip' $OLDSETTINGS | awk 'NF>0 {if (i++) printf " "; printf "%s", $0 } END { printf "\n" }'`
+    for i in $IP_ARY ; do
+        IP=`echo $i | cut -d '/' -f1`
+        ip route del $IP dev $H_BR_NAME
+    done
+    ip addr del $H_IP/32 dev $H_BR_NAME
+    ip link set $H_BR_NAME down
+    ip link del $H_BR_NAME link $H_IF_NAME type macvlan mode bridge
+    return 0
+}
 
 case "$1" in
     start|"")
-        #TODO Check pid-file if logparser is already runnning
-
+        #Check if logparser is already runnning
+        LOGPARSER_RUNNING=`ps axu | awk '/\/usr\/bin\/php -q \/usr\/local\/bin\/docker\-logparser.php/ {print $2}' | wc -l`
+        if [ $LOGPARSER_RUNNING -gt 0 ]; then
+            echo "Logparser already running. Stop the service first."
+            exit 1
+        fi
         #Copy settings file
         cp $SETTINGS $OLDSETTINGS
 
         #Configure macvlan bridge and routing on the host
-        H_IF_NAME=`xmlstarlet sel -t -m '//iface' -v . $SETTINGS`
-        H_BR_NAME=`xmlstarlet sel -t -m '//bridgename' -v . $SETTINGS`
-        H_IP=`xmlstarlet sel -t -m '//hostip' -v . $SETTINGS`
-        IP_ARY=`xmlstarlet sel -t -v '//ip' $SETTINGS | awk 'NF>0 {if (i++) printf " "; printf "%s", $0 } END { printf "\n" }'`
-        ip link add $H_BR_NAME link $H_IF_NAME type macvlan mode bridge
-        ip link set $H_BR_NAME up
-        ip addr add $H_IP dev $H_BR_NAME
-        for i in $IP_ARY ; do
-            IP=`echo $i | cut -d '/' -f1`
-            ip route add $IP dev $H_BR_NAME
-        done
+        add_br
 
         #Start the logparser which will assign IP's to the containers as they are started/restarted
-        /usr/local/bin/docker-logparser.php &
+        /usr/local/bin/docker-logparser.php start &
         ;;
     stop)
-        #TODO Revert configuration done at start
+        #Check if logparser is already runnning. Kill any such processes.
+        LOGPARSER_RUNNING=`ps axu | awk '/\/usr\/bin\/php -q \/usr\/local\/bin\/docker\-logparser.php/ {print $2}' | wc -l`
+        if [ $LOGPARSER_RUNNING -lt 1 ]; then
+            echo "Logparser not running. Exiting".
+            exit 1
+        fi
+        LOGPARSER_PID=`ps axu | awk '/\/usr\/bin\/php -q \/usr\/local\/bin\/docker\-logparser.php/ {print $2}'`
+        for i in $LOGPARSER_PID; do
+            kill $i
+        done
+
+        #Remove macvlan bridge and routing from the host
+        del_br
+
+        #Remove configured IP's from the containers
+        /usr/local/bin/docker-logparser.php stop
         ;;
     restart)
-        #TODO stop->start the service
+        #Check if logparser is already runnning. Kill any such processes.
+        LOGPARSER_RUNNING=`ps axu | awk '/\/usr\/bin\/php -q \/usr\/local\/bin\/docker\-logparser.php/ {print $2}' | wc -l`
+        if [ $LOGPARSER_RUNNING -lt 1 ]; then
+            echo "Logparser not running. Exiting".
+            exit 1
+        fi
+        LOGPARSER_PID=`ps axu | awk '/\/usr\/bin\/php -q \/usr\/local\/bin\/docker\-logparser.php/ {print $2}'`
+        for i in $LOGPARSER_PID; do
+            kill $i
+        done
+
+        #Remove macvlan bridge and routing from the host
+        del_br
+        
+        #Configure macvlan bridge and routing on the host
+        add_br
+        
+        #Remove configured IP's from the containers and re-add them with new settings
+        /usr/local/bin/docker-logparser.php restart &
         ;;
     *)
         echo "Usage: ${0:-} {start|stop|restart}" >&2
