@@ -23,7 +23,11 @@ function setip($name)
     exec("$nsenter -t " . $pid[0] . " -n ip addr add " . $ip . " dev " . $name . "-0");
     exec("$nsenter -t " . $pid[0] . " -n ip route add default via " . $gw . " dev " . $name . "-0");
     foreach ($c_ary[$name]["startcmd"] as $command) {
-        exec($command);
+        if (strcmp($command["target"], "host") === 0) {
+            exec($command["exec"]);
+        } else {
+            exec("docker exec $name " . $command["exec"]);
+        }
     }
     return 0;
 }
@@ -52,7 +56,11 @@ function delip($name)
     exec("$nsenter -t " . $pid[0] . " -n ip link del " . $name . "-0");
     exec("$nsenter -t " . $pid[0] . " -n ip route add default via " . $oldgw . " dev eth0");
     foreach ($c_ary[$name]["stopcmd"] as $command) {
-        exec($command);
+        if (strcmp($command["target"], "host") === 0) {
+            exec($command["exec"]);
+        } else {
+            exec("docker exec $name ". $command["exec"]);
+        }
     }
     return 0;
 }
@@ -128,15 +136,25 @@ if (isset($argv[1])) {
             $stopcmd = array();
             if (count((array)$container->startcommands) > 0) {
                 foreach ($container->startcommands->command as $command) {
-                    if (!(strcmp((string)$command, "") === 0)) {
-                        array_push($startcmd, (string)$command);
+                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
+                        if (!(strcmp((string)$command->exec, "") === 0)) {
+                            array_push($startcmd, array(
+                                "exec" => (string)$command->exec,
+                                "target" => (string)$command->target
+                            ));
+                        }
                     }
                 }
             }
             if (count((array)$container->stopcommands) > 0) {
                 foreach ($container->stopcommands->command as $command) {
-                    if (!(strcmp((string)$command, "") === 0)) {
-                        array_push($stopcmd, (string)$command);
+                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
+                        if (!(strcmp((string)$command->exec, "") === 0)) {
+                            array_push($stopcmd, array(
+                                "exec" => (string)$command->exec,
+                                "target" => (string)$command->target
+                            ));
+                        }
                     }
                 }
             }
@@ -162,15 +180,25 @@ if (isset($argv[1])) {
             $stopcmd = array();
             if (count((array)$container->startcommands) > 0) {
                 foreach ($container->startcommands->command as $command) {
-                    if (!(strcmp((string)$command, "") === 0)) {
-                        array_push($startcmd, (string)$command);
+                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
+                        if (!(strcmp((string)$command->exec, "") === 0)) {
+                            array_push($startcmd, array(
+                                "exec" => (string)$command->exec,
+                                "target" => (string)$command->target
+                            ));
+                        }
                     }
                 }
             }
             if (count((array)$container->stopcommands) > 0) {
                 foreach ($container->stopcommands->command as $command) {
-                    if (!(strcmp((string)$command, "") === 0)) {
-                        array_push($stopcmd, (string)$command);
+                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
+                        if (!(strcmp((string)$command->exec, "") === 0)) {
+                            array_push($stopcmd, array(
+                                "exec" => (string)$command->exec,
+                                "target" => (string)$command->target
+                            ));
+                        }
                     }
                 }
             }
@@ -199,15 +227,25 @@ if (isset($argv[1])) {
             $stopcmd = array();
             if (count((array)$container->startcommands) > 0) {
                 foreach ($container->startcommands->command as $command) {
-                    if (!(strcmp((string)$command, "") === 0)) {
-                        array_push($startcmd, (string)$command);
+                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
+                        if (!(strcmp((string)$command->exec, "") === 0)) {
+                            array_push($startcmd, array(
+                                "exec" => (string)$command->exec,
+                                "target" => (string)$command->target
+                            ));
+                        }
                     }
                 }
             }
             if (count((array)$container->stopcommands) > 0) {
                 foreach ($container->stopcommands->command as $command) {
-                    if (!(strcmp((string)$command, "") === 0)) {
-                        array_push($stopcmd, (string)$command);
+                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
+                        if (!(strcmp((string)$command->exec, "") === 0)) {
+                            array_push($stopcmd, array(
+                                "exec" => (string)$command->exec,
+                                "target" => (string)$command->target
+                            ));
+                        }
                     }
                 }
             }
@@ -235,15 +273,25 @@ if (isset($argv[1])) {
             $stopcmd = array();
             if (count((array)$container->startcommands) > 0) {
                 foreach ($container->startcommands->command as $command) {
-                    if (!(strcmp((string)$command, "") === 0)) {
-                        array_push($startcmd, (string)$command);
+                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
+                        if (!(strcmp((string)$command->exec, "") === 0)) {
+                            array_push($startcmd, array(
+                                "exec" => (string)$command->exec,
+                                "target" => (string)$command->target
+                            ));
+                        }
                     }
                 }
             }
             if (count((array)$container->stopcommands) > 0) {
                 foreach ($container->stopcommands->command as $command) {
-                    if (!(strcmp((string)$command, "") === 0)) {
-                        array_push($stopcmd, (string)$command);
+                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
+                        if (!(strcmp((string)$command->exec, "") === 0)) {
+                            array_push($stopcmd, array(
+                                "exec" => (string)$command->exec,
+                                "target" => (string)$command->target
+                            ));
+                        }
                     }
                 }
             }
