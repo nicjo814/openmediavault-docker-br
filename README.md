@@ -26,4 +26,4 @@ Parameters:
 * conatiner->ip: IP to configure on the container bridge. Should include network size(e.g. /24) of the network where the IP belongs.
 * command->exec: Command to execute at start/stop of container.
 * command->target: Should be either "host" or "container", which defines where the command should be executed.
-* NOTE that if no command is to be executed the complet "command" tag must be deleted, but the start/stopcommands tag should be left.
+* NOTE that if no command is to be executed the complete "command" tag must be deleted, but the start/stopcommands tags should be left.
