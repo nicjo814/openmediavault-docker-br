@@ -13,5 +13,16 @@ Howto install:
 * Clone this repository
 * Edit the xml file with your parameters
 * Run setup.sh as root
-* If desired run "update-rc.d openmediavault-docker-br defaults" to make changes persistent over host reboots
-* If desired run "service openmediavault-docker-br start" to start the service
+* Optionally run "update-rc.d openmediavault-docker-br defaults" to make changes persistent over host reboots
+* Optionally run "service openmediavault-docker-br start" to start the service
+
+Parameters:
+* logfile:  Location of the docker logfile.
+* iface:  Name of the network interface to bridge with on the host system.
+* gw: Gateway to use for the container. Should be the same as the host is using.
+* bridgename: Name of the bridge to create on the host machine. Can be anything, but should be kept short.
+* hostip: IP of the host system.
+* container->name: Name of the container where to create a bridge.
+* conatiner->ip: IP to configure on the container bridge. Should include network size(e.g. /24)
+* command->exec: Command to execute at start/stop of container.
+* command->target: Should be either "host" or "container", which defines where the command should be executed.
