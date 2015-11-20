@@ -1,17 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <settings>
-<iface>eth0</iface>
-<gw>192.168.0.1</gw>
-<bridgename>mydocker-0</bridgename>
-<hostip>192.168.0.2</hostip>
-<containers>
-	<container>
-		<name>container1</name>
-		<ip>192.168.0.10/24</ip>
-	</container>
-	<container>
-		<name>container2</name>
-		<ip>192.168.0.11/24</ip>
-	</container>
-</containers>
+    <logfile>/var/log/docker.log</logfile>
+    <iface>eth0</iface>
+    <gw>192.168.0.1</gw>
+    <bridgename>mydocker-0</bridgename>
+    <hostip>192.168.0.2</hostip>
+    <containers>
+        <container>
+            <name>containername</name>
+            <ip>192.168.0.3/24</ip>
+            <startcommands>
+                <command>
+                    <exec>logger Logging start in container</exec>
+                    <target>container</target>
+                </command>
+                <command>
+                    <exec>logger Logging start in host</exec>
+                    <target>host</target>
+                </command>
+            </startcommands>
+            <stopcommands>
+                <command>
+                    <exec>logger Logging stop in container</exec>
+                    <target>container</target>
+                </command>
+                <command>
+                    <exec>logger Logging stop in host</exec>
+                    <target>host</target>
+                </command>
+            </stopcommands>
+        </container>
+    </containers>
 </settings>
