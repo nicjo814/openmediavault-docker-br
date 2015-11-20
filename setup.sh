@@ -38,7 +38,7 @@ chmod 755 /usr/local/bin/docker-logparser.php
 chmod 755 /etc/init.d/openmediavault-docker-br
 
 #Autostart logparser
-update-rc.d openmediavault-docker-br defaults
+#update-rc.d openmediavault-docker-br defaults
 
 #Start the logparser
-service openmediavault-docker-br start
+#service openmediavault-docker-br start
