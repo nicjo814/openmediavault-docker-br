@@ -60,7 +60,7 @@ case "$1" in
         add_br
 
         #Start the logparser which will assign IP's to the containers as they are started/restarted
-        /usr/local/bin/docker-logparser.php start &
+        nohup /usr/local/bin/docker-logparser.php start > /dev/null 2>&1 &
         ;;
     stop)
         #Check if logparser is already runnning. Kill any such processes.
@@ -78,7 +78,7 @@ case "$1" in
         del_br
 
         #Remove configured IP's from the containers
-        /usr/local/bin/docker-logparser.php stop
+        /usr/local/bin/docker-logparser.php stop > /dev/null 2>&1 &
         ;;
     restart)
         #Check if logparser is already runnning. Kill any such processes.
@@ -99,7 +99,7 @@ case "$1" in
         add_br
         
         #Remove configured IP's from the containers and re-add them with new settings
-        /usr/local/bin/docker-logparser.php restart &
+        nohup /usr/local/bin/docker-logparser.php restart > /dev/null 2>&1 &
         ;;
     *)
         echo "Usage: ${0:-} {start|stop|restart}" >&2
