@@ -21,7 +21,7 @@ Parameters:
 * iface:  Name of the network interface to bridge with on the host system.
 * gw: Gateway to use for the container. Should be the same as the host is using.
 * bridgename: Name of the bridge to create on the host machine. Can be anything, but should be kept short.
-* hostip: IP of the host system.
+* hostip: IP of the bridge to create on the host system. Should be an unused IP.
 * container->name: Name of the container where to create a bridge.
 * conatiner->ip: IP to configure on the container bridge. Should include network size(e.g. /24) of the network where the IP belongs.
 * command->exec: Command to execute at start/stop of container.
