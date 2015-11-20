@@ -8,3 +8,10 @@ Included are the following files:
 * docker-bridge.xml Holds all settings required by the scripts. Each parameter is explained below.
 * docker-logparser.php  PHP script that continously reads the docker log to detect if a container has been started/stopped and then reassigns the proper IP to the container.
 * openmediavault-docker-br Insserv script that starts the logparser and also configures bridging interface on the host.
+
+Howto install:
+* Clone this repository
+* Edit the xml file with your parameters
+* Run setup.sh as root
+* If desired run "update-rc.d openmediavault-docker-br defaults" to make changes persistent over host reboots
+* If desired run "service openmediavault-docker-br start" to start the service
