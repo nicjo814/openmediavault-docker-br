@@ -14,7 +14,8 @@ Howto install:
 * Edit the xml file with your parameters
 * Run setup.sh as root
 * Optionally run "update-rc.d openmediavault-docker-br defaults" to make changes persistent over host reboots
-* Optionally run "service openmediavault-docker-br start" to start the service immediately
+* Run "service openmediavault-docker-br start" to start the service immediately
+* Finally restart any docker container that should get a new IP
 
 Parameters:
 * logfile:  Location of the docker logfile.
