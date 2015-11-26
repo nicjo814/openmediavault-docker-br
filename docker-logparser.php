@@ -4,11 +4,11 @@ $settingsfile="/etc/docker-bridge.xml";
 $oldsettingsfile="/tmp/docker-bridge.xml";
 $nsenter = "/usr/local/bin/nsenter";
 
-function setip($name)
+function setip($name, $settings)
 {
-    global $iface;
-    global $gw;
-    global $c_ary;
+    $iface = $settings["iface"];
+    $gw = $settings["gw"];
+    $c_ary = $settings["c_ary"];
     global $nsenter;
 
     exec("docker inspect --format '{{ .State.Pid }}' $name", $pid, $res);
@@ -32,11 +32,11 @@ function setip($name)
     return 0;
 }
 
-function delip($name)
+function delip($name, $settings)
 {
-    global $iface;
-    global $gw;
-    global $c_ary;
+    $iface = $settings["iface"];
+    $gw = $settings["gw"];
+    $c_ary = $settings["c_ary"];
     global $nsenter;
 
     exec("docker inspect --format '{{ .State.Pid }}' $name", $pid, $res);
@@ -65,10 +65,58 @@ function delip($name)
     return 0;
 }
 
-function read_log()
+function get_settings($settingsfile)
 {
-    global $logfile;
-    global $c_ary;
+    $settings = array();
+    $data = file_get_contents($settingsfile);
+    $xml = simplexml_load_string($data);
+    $settings["logfile"] = $xml->logfile;
+    $settings["gw"] = $xml->gw;
+    $settings["iface"] = $xml->iface;
+    $c_ary = array();
+    foreach ($xml->containers->container as $container) {
+        $name = (string)$container->name;
+        $ip = (string)$container->ip;
+        $startcmd = array();
+        $stopcmd = array();
+        if (count((array)$container->startcommands) > 0) {
+            foreach ($container->startcommands->command as $command) {
+                if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
+                    if (!(strcmp((string)$command->exec, "") === 0)) {
+                        array_push($startcmd, array(
+                            "exec" => (string)$command->exec,
+                            "target" => (string)$command->target
+                        ));
+                    }
+                }
+            }
+        }
+        if (count((array)$container->stopcommands) > 0) {
+            foreach ($container->stopcommands->command as $command) {
+                if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
+                    if (!(strcmp((string)$command->exec, "") === 0)) {
+                        array_push($stopcmd, array(
+                            "exec" => (string)$command->exec,
+                            "target" => (string)$command->target
+                        ));
+                    }
+                }
+            }
+        }
+        $c_ary[$name] = array(
+            "ip" => $ip,
+            "startcmd" => $startcmd,
+            "stopcmd" => $stopcmd
+        );
+    }
+    $settings["c_ary"] = $c_ary;
+    return($settings);
+}
+
+function read_log($settings)
+{
+    $logfile = $settings["logfile"];
+    $c_ary = $settings["c_ary"];
 
     //Make sure we skip to the end of the logfile before starting to read from it
     //to avoid reading "old" data.
@@ -95,19 +143,19 @@ function read_log()
                 $line = fgets($f);
                 if (preg_match('/^.*Loading containers: done.*$/', $line)) {
                     foreach ($c_ary as $key => $val) {
-                        setip($key);
+                        setip($key, $settings);
                     }
                 } elseif (preg_match('/^.*\/v[\d]{1}\.[\d]{2}\/containers\/(.*)\/start.*$/', $line, $matches)) {
                     foreach ($c_ary as $key => $val) {
                         if (strcmp($key, $matches[1]) === 0) {
-                            setip($key);
+                            setip($key, $settings);
                             break;
                         }
                     }
                 } elseif (preg_match('/^.*\/v[\d]{1}\.[\d]{2}\/containers\/(.*)\/restart.*$/', $line, $matches)) {
                     foreach ($c_ary as $key => $val) {
                         if (strcmp($key, $matches[1]) === 0) {
-                            setip($key);
+                            setip($key, $settings);
                             break;
                         }
                     }
@@ -122,189 +170,28 @@ function read_log()
 
 if (isset($argv[1])) {
     if (strcmp($argv[1], "start") === 0) {
-        //Get parameters from settingsfile
-        $data = file_get_contents($settingsfile);
-        $xml = simplexml_load_string($data);
-        $logfile=$xml->logfile;
-        $gw = $xml->gw;
-        $iface = $xml->iface;
-        $c_ary = array();
-        foreach ($xml->containers->container as $container) {
-            $name = (string)$container->name;
-            $ip = (string)$container->ip;
-            $startcmd = array();
-            $stopcmd = array();
-            if (count((array)$container->startcommands) > 0) {
-                foreach ($container->startcommands->command as $command) {
-                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
-                        if (!(strcmp((string)$command->exec, "") === 0)) {
-                            array_push($startcmd, array(
-                                "exec" => (string)$command->exec,
-                                "target" => (string)$command->target
-                            ));
-                        }
-                    }
-                }
-            }
-            if (count((array)$container->stopcommands) > 0) {
-                foreach ($container->stopcommands->command as $command) {
-                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
-                        if (!(strcmp((string)$command->exec, "") === 0)) {
-                            array_push($stopcmd, array(
-                                "exec" => (string)$command->exec,
-                                "target" => (string)$command->target
-                            ));
-                        }
-                    }
-                }
-            }
-            $c_ary[$name] = array(
-                "ip" => $ip,
-                "startcmd" => $startcmd,
-                "stopcmd" => $stopcmd
-            );
-        }
-        read_log();
+        $settings = get_settings($settingsfile);
+        read_log($settings);
     } elseif (strcmp($argv[1], "stop") === 0) {
         //Get parameters from oldsettingsfile
-        $data = file_get_contents($oldsettingsfile);
-        $xml = simplexml_load_string($data);
-        $logfile=$xml->logfile;
-        $gw = $xml->gw;
-        $iface = $xml->iface;
-        $c_ary = array();
-        foreach ($xml->containers->container as $container) {
-            $name = (string)$container->name;
-            $ip = (string)$container->ip;
-            $startcmd = array();
-            $stopcmd = array();
-            if (count((array)$container->startcommands) > 0) {
-                foreach ($container->startcommands->command as $command) {
-                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
-                        if (!(strcmp((string)$command->exec, "") === 0)) {
-                            array_push($startcmd, array(
-                                "exec" => (string)$command->exec,
-                                "target" => (string)$command->target
-                            ));
-                        }
-                    }
-                }
-            }
-            if (count((array)$container->stopcommands) > 0) {
-                foreach ($container->stopcommands->command as $command) {
-                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
-                        if (!(strcmp((string)$command->exec, "") === 0)) {
-                            array_push($stopcmd, array(
-                                "exec" => (string)$command->exec,
-                                "target" => (string)$command->target
-                            ));
-                        }
-                    }
-                }
-            }
-            $c_ary[$name] = array(
-                "ip" => $ip,
-                "startcmd" => $startcmd,
-                "stopcmd" => $stopcmd
-            );
-        }
-        foreach ($c_ary as $name => $val) {
-            delip($name);
+        $settings = get_settings($oldsettingsfile);
+        foreach ($settings["c_ary"] as $name => $val) {
+            delip($name, $settings);
         }
         exit(0);
     } elseif (strcmp($argv[1], "restart") === 0) {
         //Get parameters from oldsettingsfile
-        $data = file_get_contents($oldsettingsfile);
-        $xml = simplexml_load_string($data);
-        $logfile=$xml->logfile;
-        $gw = $xml->gw;
-        $iface = $xml->iface;
-        $c_ary = array();
-        foreach ($xml->containers->container as $container) {
-            $name = (string)$container->name;
-            $ip = (string)$container->ip;
-            $startcmd = array();
-            $stopcmd = array();
-            if (count((array)$container->startcommands) > 0) {
-                foreach ($container->startcommands->command as $command) {
-                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
-                        if (!(strcmp((string)$command->exec, "") === 0)) {
-                            array_push($startcmd, array(
-                                "exec" => (string)$command->exec,
-                                "target" => (string)$command->target
-                            ));
-                        }
-                    }
-                }
-            }
-            if (count((array)$container->stopcommands) > 0) {
-                foreach ($container->stopcommands->command as $command) {
-                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
-                        if (!(strcmp((string)$command->exec, "") === 0)) {
-                            array_push($stopcmd, array(
-                                "exec" => (string)$command->exec,
-                                "target" => (string)$command->target
-                            ));
-                        }
-                    }
-                }
-            }
-            $c_ary[$name] = array(
-                "ip" => $ip,
-                "startcmd" => $startcmd,
-                "stopcmd" => $stopcmd
-            );
+        $settings = get_settings($oldsettingsfile);
+        foreach ($settings["c_ary"] as $name => $val) {
+            delip($name, $settings);
         }
-        foreach ($c_ary as $name => $val) {
-            delip($name);
-        }
-    
+
         //Get parameters from settingsfile
-        $data = file_get_contents($settingsfile);
-        $xml = simplexml_load_string($data);
-        $logfile=$xml->logfile;
-        $gw = $xml->gw;
-        $iface = $xml->iface;
-        $c_ary = array();
-        foreach ($xml->containers->container as $container) {
-            $name = (string)$container->name;
-            $ip = (string)$container->ip;
-            $startcmd = array();
-            $stopcmd = array();
-            if (count((array)$container->startcommands) > 0) {
-                foreach ($container->startcommands->command as $command) {
-                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
-                        if (!(strcmp((string)$command->exec, "") === 0)) {
-                            array_push($startcmd, array(
-                                "exec" => (string)$command->exec,
-                                "target" => (string)$command->target
-                            ));
-                        }
-                    }
-                }
-            }
-            if (count((array)$container->stopcommands) > 0) {
-                foreach ($container->stopcommands->command as $command) {
-                    if ((strcmp((string)$command->target, "host") === 0) || (strcmp((string)$command->target, "container") === 0)) {
-                        if (!(strcmp((string)$command->exec, "") === 0)) {
-                            array_push($stopcmd, array(
-                                "exec" => (string)$command->exec,
-                                "target" => (string)$command->target
-                            ));
-                        }
-                    }
-                }
-            }
-            $c_ary[$name] = array(
-                "ip" => $ip,
-                "startcmd" => $startcmd,
-                "stopcmd" => $stopcmd
-            );
+        $settings = get_settings($settingsfile);
+        foreach ($settings["c_ary"] as $name => $val) {
+            setip($name, $settings);
         }
-        foreach ($c_ary as $name => $val) {
-            setip($name);
-        }
-        read_log();
+        read_log($settings);
     }
 }
 
