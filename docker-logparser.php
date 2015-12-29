@@ -152,9 +152,11 @@ function read_log($settings)
                             break;
                         }
                     }
-                } elseif (preg_match('/^.*\/v[\d]{1}\.[\d]{2}\/containers\/(.*)\/restart.*$/', $line, $matches)) {
+                } elseif (preg_match('/^.*\/v[\d]{1}\.[\d]{2}\/containers\/(.*)\/restart\?t\=([\d]+).*$/', $line, $matches)) {
                     foreach ($c_ary as $key => $val) {
-                        if (strcmp($key, $matches[1]) === 0) {
+						if (strcmp($key, $matches[1]) === 0) {
+							$t_o = (int)$matches[2]+5;
+							sleep($t_o);
                             setip($key, $settings);
                             break;
                         }
