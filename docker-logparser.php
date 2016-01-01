@@ -11,26 +11,35 @@ function setip($name, $settings)
     $c_ary = $settings["c_ary"];
     global $nsenter;
 
-    exec("docker inspect --format '{{ .State.Pid }}' $name", $pid, $res);
-	if ($res === 1) {
-		return 0;
-	}
 	$ip = $c_ary[$name]["ip"];
 	$ip_nonet = explode("/", $c_ary[$name]["ip"]);
 	$ip_nonet = $ip_nonet[0];
 	$docker_ip = array("");
+	$count = 0;
 	while(strcmp($ip_nonet, $docker_ip[0]) !== 0) {
+		if ($count>10) {
+			print("Failed to set IP for $name, retrying\n");
+			exec("docker stop $name");
+			sleep(5);
+			exec("docker start $name");
+			sleep(5);
+			$count = 0;
+		}	
+		unset($pid);
+    	exec("docker inspect --format '{{ .State.Pid }}' $name", $pid, $res);
 		sleep(1);
-		$docker_ip = $docker_ip[0];
 		exec("ip link add " . $name . "-0 link " . $iface . " type macvlan mode bridge");
 		exec("ip link set netns " . $pid[0] . " " . $name . "-0");
 		exec("$nsenter -t " . $pid[0] . " -n ip link set " . $name . "-0 up");
 		exec("$nsenter -t " . $pid[0] . " -n ip route del default");
 		exec("$nsenter -t " . $pid[0] . " -n ip addr add " . $ip . " dev " . $name . "-0");
 		exec("$nsenter -t " . $pid[0] . " -n ip route add default via " . $gw . " dev " . $name . "-0");
+		$cmd = "docker exec -i $name ifconfig $name-0 | grep 'inet\ addr' | cut -d':' -f2 | cut -d' ' -f1";
+		print("$cmd\n");
 		unset($docker_ip);
-		$cmd = "docker exec -it $name ifconfig $name-0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'";
 		exec($cmd, $docker_ip);
+		print("Processing $name, current ip=$docker_ip[0]\n");
+		$count++;
 	}
 	foreach ($c_ary[$name]["startcmd"] as $command) {
 		if (strcmp($command["target"], "host") === 0) {
